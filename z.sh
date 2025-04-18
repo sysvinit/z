@@ -45,10 +45,27 @@ _z() {
         [ -f "$datafile" ] || return
 
         local line
-        while read line; do
-            # only count directories
-            [ -d "${line%%\|*}" ] && echo "$line"
-        done < "$datafile"
+        if [ ${#_Z_REMOVABLE_DIRS[@]} -eq 0 ]; then
+            while read line; do
+                # only count directories
+                [ -d "${line%%\|*}" ] && echo "$line"
+            done < "$datafile"
+        else
+            # ignore non-existent paths if they're on removable media
+            while read line; do
+                local dir="${line%%\|*}"
+                local removable
+                for removable in "${_Z_REMOVABLE_DIRS[@]}"; do
+                    case "$dir" in
+                        "$removable"*)
+                            [ ! -e "$removable" -o -d "$dir" ] && echo "$line"
+                            continue 2
+                        ;;
+                    esac
+                done
+                [ -d "$dir" ] && echo "$line"
+            done < "$datafile"
+        fi
         return 0
     }
 
